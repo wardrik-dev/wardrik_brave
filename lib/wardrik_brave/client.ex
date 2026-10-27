@@ -1,11 +1,14 @@
 defmodule WardrikBrave.Client do
   @moduledoc """
   Calls Brave's LLM Context API, which ranks and extracts the passages that bear on a query, and
-  keeps of each result what a model can use: its URL, title, passages and date.
+  keeps of each result what a model can use: its URL, title, passages and date. A search that
+  fails for a while, as on a rate limit, a 5xx or a dropped connection, is tried again up to five
+  times, waiting longer each time, or as long as Brave says.
   """
 
   @path "/res/v1/llm/context"
   @receive_timeout 30_000
+  @retries 5
 
   @doc "Runs one search with `params`, the API's own, `q` among them."
   @spec search(map(), map()) :: {:ok, map()} | {:error, String.t()}
@@ -18,7 +21,8 @@ defmodule WardrikBrave.Client do
         json: params,
         headers: %{"x-subscription-token" => settings.api_key, "accept" => "application/json"},
         receive_timeout: @receive_timeout,
-        retry: false
+        retry: :transient,
+        max_retries: @retries
       ] ++
         settings.req_options
 

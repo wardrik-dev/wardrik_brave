@@ -6,7 +6,8 @@ defmodule WardrikBraveTest do
     key = Map.get(context, :key, "k3y")
 
     start_supervised!(
-      {WardrikBrave, name: name, api_key: key, req_options: [plug: {Req.Test, name}]}
+      {WardrikBrave,
+       name: name, api_key: key, req_options: [plug: {Req.Test, name}, retry_delay: 0]}
     )
 
     [tool] = WardrikBrave.tools(nil, brave: name)
@@ -77,6 +78,20 @@ defmodule WardrikBraveTest do
 
     assert {:error, "published_between is" <> _} =
              search(tool, %{query: "q", published_between: "last week"})
+  end
+
+  test "tries a search that failed for a while again", %{name: name, tool: tool} do
+    {:ok, tries} = Agent.start_link(fn -> 0 end)
+
+    Req.Test.stub(name, fn conn ->
+      case Agent.get_and_update(tries, &{&1, &1 + 1}) do
+        0 -> Plug.Conn.send_resp(conn, 503, "")
+        _later -> Req.Test.json(conn, %{"grounding" => %{"generic" => []}})
+      end
+    end)
+
+    assert {:ok, %{"count" => 0}} = search(tool, %{query: "q"})
+    assert Agent.get(tries, & &1) == 2
   end
 
   test "says why a search failed", %{name: name, tool: tool} do
