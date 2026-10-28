@@ -48,16 +48,26 @@ defmodule WardrikBrave.WebSearch do
             "About how many tokens the whole result may take, 4096 unless set. Raise it only for research."
         ]
       ],
-      run: fn args, _context -> run(brave, args) end,
+      run: fn args, context -> run(brave, args, context) end,
       annotations: [read_only: true, idempotent: true, open_world: true, labels: ["outside"]]
     )
   end
 
-  @doc "Runs one search with the settings `brave` holds."
-  @spec run(atom(), map()) :: {:ok, map()} | {:error, String.t()}
-  def run(brave, args) do
+  @doc """
+  Runs one search with the settings `brave` holds, and the agent's own `BRAVE_API_KEY` where its keys
+  hold one.
+  """
+  @spec run(atom(), map(), WardrikCore.Context.t()) :: {:ok, map()} | {:error, String.t()}
+  def run(brave, args, context) do
     with {:ok, window} <- window(args),
-         do: Client.search(WardrikBrave.settings(brave), body(args, window))
+         do: Client.search(settings(brave, context), body(args, window))
+  end
+
+  defp settings(brave, context) do
+    case WardrikCore.Keys.fetch(context, "BRAVE_API_KEY") do
+      {:ok, key} -> %{WardrikBrave.settings(brave) | api_key: key}
+      :error -> WardrikBrave.settings(brave)
+    end
   end
 
   @doc "Returns the API's parameters for the tool's arguments."

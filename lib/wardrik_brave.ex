@@ -4,15 +4,16 @@ defmodule WardrikBrave do
   page that bear on the query, not a list of links, so one call is usually enough to ground an
   answer.
 
-  Start it with the key it searches with, under a name of your own, and give agents the capability
-  by that name:
+  Start it under a name of your own, with the key it searches with where an agent's keys hold none,
+  and give agents the capability by that name:
 
       children = [{WardrikBrave, name: MyApp.Brave, api_key: System.fetch_env!("BRAVE_API_KEY")}]
 
       WardrikCore.start_agent(agent_id: "acme/triage", model: "...", capabilities: [{WardrikBrave, brave: MyApp.Brave}])
 
-  The key is held by the process, never by an agent, so it's never kept in the store with the
-  agent's state. Without a key, a search answers that the key is missing. It takes `:req_options`,
+  Each search takes `BRAVE_API_KEY` from the agent's `WardrikCore.Keys` first, so an org can bring
+  its own, and the key it was started with otherwise. Neither is kept in the store with the agent's
+  state. Without a key, a search answers that the key is missing. It takes `:req_options`,
   merged into every request, and `:base_url`.
 
   The pages a search finds are ones anyone could have written, so the tool is marked as reaching

@@ -33,6 +33,13 @@ config :my_app, MyApp.Wardrik, capabilities: [web_search: {WardrikBrave, brave: 
 The daemon does this for you from `config.yaml`'s `brave.api_key`, which `wardrik vault put
 BRAVE_API_KEY` can hold.
 
-The key is held by the process, never by an agent, so it's never kept in the store with an agent's
-state. Without one, a search answers that the key is missing, and the agent says so. Results are
+Each search takes `BRAVE_API_KEY` from the agent's `WardrikCore.Keys` first, and the key it was
+started with otherwise. In a Wardrik, that's the vault: the agent's owner's, its org's, then the
+deployment's, so an org can bring its own and the deployment's needs no restart to change:
+
+```elixir
+:ok = MyApp.Wardrik.put_secret("deployment", "BRAVE_API_KEY", key)
+```
+
+Neither key is kept in the store with an agent's state. Without one, a search answers that the key is missing, and the agent says so. Results are
 kept small, 10 results and about 4,096 tokens, since each becomes part of the turn that asked.

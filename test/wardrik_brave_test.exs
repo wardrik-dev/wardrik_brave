@@ -99,6 +99,36 @@ defmodule WardrikBraveTest do
     assert {:ok, %{"count" => 0}} = search(tool, %{query: "q"})
   end
 
+  defmodule Held do
+    @behaviour WardrikCore.Keys
+
+    @impl true
+    def fetch("BRAVE_API_KEY", %WardrikCore.Principal{id: "acme"}, _opts), do: {:ok, "acme-key"}
+    def fetch(_name, _principal, _opts), do: :error
+  end
+
+  test "searches with the agent's own key where its keys hold one", %{name: name, tool: tool} do
+    test = self()
+
+    Req.Test.stub(name, fn conn ->
+      send(test, {:token, Plug.Conn.get_req_header(conn, "x-subscription-token")})
+      Req.Test.json(conn, %{"grounding" => %{"generic" => []}, "sources" => %{}})
+    end)
+
+    context =
+      WardrikCore.Context.new(
+        agent_id: "acme/triage",
+        principal: %WardrikCore.Principal{id: "acme"},
+        keys: {Held, []}
+      )
+
+    assert {:ok, _found} = tool.run.(%{query: "q"}, context)
+    assert_receive {:token, ["acme-key"]}
+
+    assert {:ok, _found} = search(tool, %{query: "q"})
+    assert_receive {:token, ["k3y"]}
+  end
+
   @tag key: nil
   test "says the key is missing", %{tool: tool} do
     assert {:error, "Web search has no key." <> _} = search(tool, %{query: "q"})
