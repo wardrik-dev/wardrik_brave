@@ -19,8 +19,8 @@ defmodule WardrikBrave.WebSearch do
   Answers each source's URL, title, passages, and the page's date where it's known. No results means nothing relevant was found, not that the search failed.
   """
 
-  @doc "Returns the tool, searching with the settings `brave` holds."
-  @spec tool(atom()) :: WardrikCore.Tool.t()
+  @doc "Returns the tool, searching with the settings `brave` holds, or those given inline."
+  @spec tool(atom() | map()) :: WardrikCore.Tool.t()
   def tool(brave) do
     WardrikCore.Tool.new!(
       name: "web_search",
@@ -57,7 +57,8 @@ defmodule WardrikBrave.WebSearch do
   Runs one search with the settings `brave` holds, and the agent's own `BRAVE_API_KEY` where its keys
   hold one.
   """
-  @spec run(atom(), map(), WardrikCore.Context.t()) :: {:ok, map()} | {:error, String.t()}
+  @spec run(atom() | map(), map(), WardrikCore.Context.t()) ::
+          {:ok, map()} | {:error, String.t()}
   def run(brave, args, context) do
     with {:ok, window} <- window(args),
          do: Client.search(settings(brave, context), body(args, window))

@@ -41,5 +41,8 @@ deployment's, so an org can bring its own and the deployment's needs no restart 
 :ok = MyApp.Wardrik.put_secret("deployment", "BRAVE_API_KEY", key)
 ```
 
+Where every agent's keys hold one, nothing needs starting: name the capability with its settings
+inline, as `web_search: {WardrikBrave, []}`.
+
 Neither key is kept in the store with an agent's state. Without one, a search answers that the key is missing, and the agent says so. Results are
 kept small, 10 results and about 4,096 tokens, since each becomes part of the turn that asked.

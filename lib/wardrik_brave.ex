@@ -12,7 +12,9 @@ defmodule WardrikBrave do
       WardrikCore.start_agent(agent_id: "acme/triage", model: "...", capabilities: [{WardrikBrave, brave: MyApp.Brave}])
 
   Each search takes `BRAVE_API_KEY` from the agent's `WardrikCore.Keys` first, so an org can bring
-  its own, and the key it was started with otherwise. Neither is kept in the store with the agent's
+  its own, and the key it was started with otherwise. Where every agent's keys hold one, nothing
+  needs starting: give the capability its settings inline, as `{WardrikBrave, []}`, or with
+  `:api_key`, `:req_options` and `:base_url`. Neither is kept in the store with the agent's
   state. Without a key, a search answers that the key is missing. It takes `:req_options`,
   merged into every request, and `:base_url`.
 
@@ -26,25 +28,30 @@ defmodule WardrikBrave do
 
   @behaviour WardrikCore.Capability
 
+  @settings [api_key: nil, req_options: [], base_url: "https://api.search.brave.com"]
+
   @doc "Starts holding the settings searches use: `:name`, `:api_key`, `:req_options` and `:base_url`."
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
-    opts =
-      Keyword.validate!(opts, [
-        :name,
-        :api_key,
-        req_options: [],
-        base_url: "https://api.search.brave.com"
-      ])
+    opts = Keyword.validate!(opts, [:name | @settings])
 
     GenServer.start_link(__MODULE__, opts, name: Keyword.fetch!(opts, :name))
   end
 
   @impl WardrikCore.Capability
-  def tools(_context, opts), do: [WardrikBrave.WebSearch.tool(Keyword.fetch!(opts, :brave))]
+  def tools(_context, opts), do: [WardrikBrave.WebSearch.tool(source(opts))]
 
-  @doc "Returns the settings `brave` holds."
-  @spec settings(atom()) :: map()
+  defp source(opts) do
+    case Keyword.fetch(opts, :brave) do
+      {:ok, brave} -> brave
+      :error -> opts |> Keyword.validate!(@settings) |> Map.new()
+    end
+  end
+
+  @doc "Returns the settings `brave` holds, or the settings given inline."
+  @spec settings(atom() | map()) :: map()
+  def settings(%{} = settings), do: settings
+
   def settings(brave) do
     [{:settings, settings}] = :ets.lookup(brave, :settings)
     settings

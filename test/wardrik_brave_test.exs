@@ -129,6 +129,29 @@ defmodule WardrikBraveTest do
     assert_receive {:token, ["k3y"]}
   end
 
+  test "searches with settings given inline, and the agent's own key, with nothing started" do
+    test = self()
+
+    Req.Test.stub(:inline, fn conn ->
+      send(test, {:token, Plug.Conn.get_req_header(conn, "x-subscription-token")})
+      Req.Test.json(conn, %{"grounding" => %{"generic" => []}, "sources" => %{}})
+    end)
+
+    [tool] = WardrikBrave.tools(nil, req_options: [plug: {Req.Test, :inline}])
+
+    context =
+      WardrikCore.Context.new(
+        agent_id: "acme/triage",
+        principal: %WardrikCore.Principal{id: "acme"},
+        keys: {Held, []}
+      )
+
+    assert {:ok, _found} = tool.run.(%{query: "q"}, context)
+    assert_receive {:token, ["acme-key"]}
+
+    assert {:error, "Web search has no key." <> _} = search(tool, %{query: "q"})
+  end
+
   @tag key: nil
   test "says the key is missing", %{tool: tool} do
     assert {:error, "Web search has no key." <> _} = search(tool, %{query: "q"})
