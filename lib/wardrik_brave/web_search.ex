@@ -1,7 +1,9 @@
 defmodule WardrikBrave.WebSearch do
   @moduledoc """
-  The `web_search` tool. A result becomes part of the turn that asked for it, so it's kept small: 10
-  results and about 4,096 tokens unless the agent asks for more.
+  The `web_search` tool.
+
+  Results become part of the turn that asked for them, so they're kept small: 10 results and about
+  4,096 tokens unless the agent asks for more.
   """
 
   alias WardrikBrave.Client
@@ -19,7 +21,7 @@ defmodule WardrikBrave.WebSearch do
   Answers each source's URL, title, passages, and the page's date where it's known. No results means nothing relevant was found, not that the search failed.
   """
 
-  @doc "Returns the tool, searching with the settings `brave` holds, or those given inline."
+  @doc "Returns the tool. `brave` is a started name or inline settings. See `WardrikBrave.settings/1`."
   @spec tool(atom() | map()) :: WardrikCore.Tool.t()
   def tool(brave) do
     WardrikCore.Tool.new!(
@@ -54,8 +56,11 @@ defmodule WardrikBrave.WebSearch do
   end
 
   @doc """
-  Runs one search with the settings `brave` holds, and the agent's own `BRAVE_API_KEY` where its keys
-  hold one.
+  Runs one search.
+
+  Uses the agent's `BRAVE_API_KEY` if its keys hold one, and the settings in `brave` otherwise.
+  Returns `{:error, message}` if both `:freshness` and `:published_between` are given, or if
+  `:published_between` isn't `"YYYY-MM-DDtoYYYY-MM-DD"`.
   """
   @spec run(atom() | map(), map(), WardrikCore.Context.t()) ::
           {:ok, map()} | {:error, String.t()}
@@ -71,7 +76,7 @@ defmodule WardrikBrave.WebSearch do
     end
   end
 
-  @doc "Returns the API's parameters for the tool's arguments."
+  @doc "Returns the API parameters for the tool's arguments and date window."
   @spec body(map(), String.t() | nil) :: map()
   def body(args, window) do
     %{

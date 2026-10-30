@@ -1,27 +1,38 @@
 defmodule WardrikBrave do
   @moduledoc """
-  Web search for agents, through Brave's LLM Context API: a search answers with the passages of each
-  page that bear on the query, not a list of links, so one call is usually enough to ground an
-  answer.
+  Web search for agents, through Brave's LLM Context API.
 
-  Start it under a name of your own, with the key it searches with where an agent's keys hold none,
-  and give agents the capability by that name:
+  A search returns the relevant passages of each page, not a list of links, so one call is usually
+  enough to ground an answer. Use it when agents need facts newer than their training, or facts
+  they'd otherwise guess at.
 
       children = [{WardrikBrave, name: MyApp.Brave, api_key: System.fetch_env!("BRAVE_API_KEY")}]
 
-      WardrikCore.start_agent(agent_id: "acme/triage", model: "...", capabilities: [{WardrikBrave, brave: MyApp.Brave}])
+      WardrikCore.start_agent(
+        agent_id: "acme/triage",
+        model: "anthropic:claude-haiku-4-5",
+        capabilities: [{WardrikBrave, brave: MyApp.Brave}]
+      )
 
-  Each search takes `BRAVE_API_KEY` from the agent's `WardrikCore.Keys` first, so an org can bring
-  its own, and the key it was started with otherwise. Where every agent's keys hold one, nothing
-  needs starting: give the capability its settings inline, as `{WardrikBrave, []}`, or with
-  `:api_key`, `:req_options` and `:base_url`. Neither is kept in the store with the agent's
-  state. Without a key, a search answers that the key is missing. It takes `:req_options`,
-  merged into every request, and `:base_url`.
+  If every agent's keys hold `BRAVE_API_KEY`, nothing needs starting. Give the settings inline:
 
-  The pages a search finds are ones anyone could have written, so the tool is marked as reaching
-  the open world.
+      capabilities: [{WardrikBrave, []}]
 
-  Reach for this when agents need what happened after their training, or facts they'd guess at.
+  ## Keys
+
+  Each search takes `BRAVE_API_KEY` from the agent's `WardrikCore.Keys` first, then falls back to
+  `:api_key`. Neither is kept in the store with the agent's state. Without a key, the search
+  returns an error saying so.
+
+  ## Options
+
+  Given to `start_link/1`, or inline in place of `:brave`:
+
+    * `:api_key` - the key to search with where the agent's keys hold none.
+    * `:req_options` - merged into every request. `[]` unless set.
+    * `:base_url` - `"https://api.search.brave.com"` unless set.
+
+  The tool is marked `open_world`, since the pages it finds could be written by anyone.
   """
 
   use GenServer
@@ -30,7 +41,11 @@ defmodule WardrikBrave do
 
   @settings [api_key: nil, req_options: [], base_url: "https://api.search.brave.com"]
 
-  @doc "Starts holding the settings searches use: `:name`, `:api_key`, `:req_options` and `:base_url`."
+  @doc """
+  Starts a process that holds the search settings under `:name`.
+
+  Takes `:name` (required) and the options in the module docs.
+  """
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
     opts = Keyword.validate!(opts, [:name | @settings])
@@ -48,7 +63,11 @@ defmodule WardrikBrave do
     end
   end
 
-  @doc "Returns the settings `brave` holds, or the settings given inline."
+  @doc """
+  Returns the settings started under `brave`, or `brave` itself if it's a map.
+
+  Raises `ArgumentError` if nothing is started under `brave`.
+  """
   @spec settings(atom() | map()) :: map()
   def settings(%{} = settings), do: settings
 

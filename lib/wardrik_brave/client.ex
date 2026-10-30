@@ -1,15 +1,22 @@
 defmodule WardrikBrave.Client do
   @moduledoc """
-  Calls Brave's LLM Context API, which ranks and extracts the passages that bear on a query, and
-  keeps of each result what a model can use: its URL, title, passages and date. A search that
-  fails in passing, as on a rate limit, a 5xx or a dropped connection, raises
-  `WardrikBrave.Unavailable`, so the tool runner tries it again; see `WardrikCore.Retry`.
+  Calls Brave's LLM Context API.
+
+  Keeps what a model can use of each result: its URL, title, passages and date.
+
+  Raises `WardrikBrave.Unavailable` on a rate limit, a 5xx or a dropped connection, so the tool
+  runner retries. See `WardrikCore.Retry`.
   """
 
   @path "/res/v1/llm/context"
   @receive_timeout 30_000
 
-  @doc "Runs one search with `params`, the API's own, `q` among them."
+  @doc """
+  Runs one search.
+
+  `params` are the API's own, such as `"q"`. Returns `{:error, message}` if `settings` has no
+  `:api_key`, or if Brave answers with a 4xx other than 429.
+  """
   @spec search(map(), map()) :: {:ok, map()} | {:error, String.t()} | no_return()
   def search(%{api_key: key}, _params) when key in [nil, ""],
     do: {:error, "Web search has no key. Whoever runs Wardrik gives it one, as brave.api_key."}
@@ -43,7 +50,11 @@ defmodule WardrikBrave.Client do
     end
   end
 
-  @doc "Returns what a model can use of a response: each result's URL, title, passages and date."
+  @doc """
+  Returns the results of a response body, as `%{"results" => [...], "count" => n}`.
+
+  Each result has `"url"`, `"title"`, `"snippets"` and, where known, `"age"`.
+  """
   @spec summarized(term()) :: map()
   def summarized(%{} = body) do
     sources = Map.get(body, "sources", %{})
@@ -75,6 +86,6 @@ defmodule WardrikBrave.Client do
 end
 
 defmodule WardrikBrave.Unavailable do
-  @moduledoc "Brave's search failed in passing, so trying it again may succeed."
+  @moduledoc "Raised when a search fails in a way that a retry may fix."
   defexception [:message]
 end
