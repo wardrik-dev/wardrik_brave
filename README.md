@@ -29,7 +29,7 @@ In [Wardrik](https://hexdocs.pm/wardrik), offer it by name. A definition then na
 `tools`:
 
 ```elixir
-config :my_app, MyApp.Wardrik, capabilities: [web_search: {WardrikBrave, brave: MyApp.Brave}]
+config :my_app, MyApp.AgentRuntime, capabilities: [web_search: {WardrikBrave, brave: MyApp.Brave}]
 ```
 
 The daemon sets this up from `brave.api_key` in `config.yaml`. `wardrik vault put BRAVE_API_KEY`
@@ -46,7 +46,7 @@ Each search looks for `BRAVE_API_KEY` in this order:
 So an org can bring its own key, and changing the deployment's needs no restart:
 
 ```elixir
-:ok = MyApp.Wardrik.put_secret("deployment", "BRAVE_API_KEY", key)
+:ok = MyApp.AgentRuntime.put_secret("deployment", "BRAVE_API_KEY", key)
 ```
 
 If every agent's keys hold one, nothing needs starting. Give the capability its settings inline:
